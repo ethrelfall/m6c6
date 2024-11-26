@@ -15,12 +15,6 @@
 # there is no potential either
 # see also old work on 1D systems, SOLdrake - M2.2.2 NEPTUNE report.  But note sources are different.
 
-# eqs:
-# ndot = - (nu)' + (Sn = 2*0.03)
-# udot = - u u' - tau T n'/n
-# Tdot = -2/3 T u' - u T' + (ST = 2*0.03)
-
-
 from firedrake import *
 import math
 from irksome import Dt, GaussLegendre, MeshConstant, TimeStepper
@@ -76,17 +70,20 @@ u_n = 0.5*(dot(u,norm)+abs(dot(u,norm)))
 
 # integrated press grad term by parts (or its not stable) + seem to get away without a surface term from doing that (due to mixed DG/CG?) ...
 
-heat_suppress = 0.5  # artificially slow down heat transport i.e. slow down tdot timescale, makes it more stable
+heat_suppress = 1.0  # artificially slow down heat transport NOT USED
 
 # no parallel current, v_e = v_i
-# this relaxes back to reasonable-looking equilibrium, using heat_suppress=0.5
+# this relaxes back to reasonable-looking equilibrium
 
 F = -Dt(n)*v1*dx + (n*dot(u, grad(v1))+nstar*v1)*dx \
    - (v1('+') - v1('-'))*(u_n('+')*n('+') - u_n('-')*n('-'))*dS \
     -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*T*grad(v2[0])[0]*n*dx \
    - conditional(dot(u, norm) > 0, v1*dot(u, norm)*n, 0.0)*ds \
-    -n*dot(Dt(T), v3) *dx + heat_suppress*(n*nstar*v3)*dx \
-    - heat_suppress*(2.0/3.0)*T*v3*grad(u[0])[0]*n*dx - heat_suppress*n*u[0]*grad(T)[0]*v3*dx\
+    -dot(Dt(T), v3) *dx + heat_suppress*(nstar*v3)*dx \
+    +(2.0/3.0)*heat_suppress*(T*dot(u, grad(v3)))*dx \
+    -(1.0/3.0)*heat_suppress*(dot(u,grad(T))*v3)*dx \
+   - (2.0/3.0)*heat_suppress*(v3('+') - v3('-'))*(u_n('+')*T('+') - u_n('-')*T('-'))*dS \
+   - (2.0/3.0)*heat_suppress*conditional(dot(u, norm) > 0, v3*dot(u, norm)*T, 0.0)*ds \
 
 # params taken from Cahn-Hilliard example cited above
 params = {'snes_monitor': None, 'snes_max_it': 100,
@@ -100,7 +97,7 @@ params = {'snes_monitor': None, 'snes_max_it': 100,
 bc_test1 = DirichletBC(V.sub(1),as_vector([-1.0]),1)
 bc_test2 = DirichletBC(V.sub(1),as_vector([1.0]),2)
 
-# removed velocity BC.  Seems to work but not clear whether outflow is sonic.
+# removed velocity BC.  Seems to work and outflow speed seems sonic (c_s = sqrt(T))
 stepper = TimeStepper(F, butcher_tableau, t, dt, nuT, solver_parameters=params)
 #stepper = TimeStepper(F, butcher_tableau, t, dt, nuT, solver_parameters=params, bcs=[bc_test1, bc_test2])
 
