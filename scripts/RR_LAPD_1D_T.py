@@ -77,8 +77,8 @@ heat_suppress = 1.0  # artificially slow down heat transport NOT USED
 
 F = -Dt(n)*v1*dx + (n*dot(u, grad(v1))+nstar*v1)*dx \
    - (v1('+') - v1('-'))*(u_n('+')*n('+') - u_n('-')*n('-'))*dS \
-    -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*T*grad(v2[0])[0]*n*dx \
    - conditional(dot(u, norm) > 0, v1*dot(u, norm)*n, 0.0)*ds \
+    -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*T*grad(v2[0])[0]*dx \
     -dot(Dt(T), v3) *dx + heat_suppress*(nstar*v3)*dx \
     +(2.0/3.0)*heat_suppress*(T*dot(u, grad(v3)))*dx \
     -(1.0/3.0)*heat_suppress*(dot(u,grad(T))*v3)*dx \
