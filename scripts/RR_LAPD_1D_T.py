@@ -15,6 +15,11 @@
 # there is no potential either
 # see also old work on 1D systems, SOLdrake - M2.2.2 NEPTUNE report.  But note sources are different.
 
+# equations
+# ndot = -(n u)' + (Sn=2*0.03)
+# n udot = - n u u' - \tau (n T)'
+# Tdot = - (2/3) T u' - u T' + (ST=2*0.03)
+
 from firedrake import *
 import math
 from irksome import Dt, GaussLegendre, MeshConstant, TimeStepper
