@@ -89,6 +89,9 @@ F = -Dt(n)*v1*dx + (n*dot(u, grad(v1))+nstar*v1)*dx \
     -(1.0/3.0)*heat_suppress*(dot(u,grad(T))*v3)*dx \
    - (2.0/3.0)*heat_suppress*(v3('+') - v3('-'))*(u_n('+')*T('+') - u_n('-')*T('-'))*dS \
    - (2.0/3.0)*heat_suppress*conditional(dot(u, norm) > 0, v3*dot(u, norm)*T, 0.0)*ds \
+   - conditional(dot(u, norm) > 0, v2[0]*dot(u, norm)*u[0]*n, 0.0)*ds \
+
+# last bdy term is needed to avoid boundary artifacts!
 
 # params taken from Cahn-Hilliard example cited above
 params = {'snes_monitor': None, 'snes_max_it': 100,
