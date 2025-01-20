@@ -15,16 +15,11 @@
 # there is no potential either
 # see also old work on 1D systems, SOLdrake - M2.2.2 NEPTUNE report.  But note sources are different.
 
-# equations
-# ndot = -(n u)' + (Sn=2*0.03)
-# n udot = - n u u' - \tau (n T)'
-# Tdot = - (2/3) T u' - u T' + (ST=2*0.03)
-
 from firedrake import *
 import math
 from irksome import Dt, GaussLegendre, MeshConstant, TimeStepper
 
-meshres = 1000
+meshres = 100
 mesh = IntervalMesh(meshres, -1, 1)
 V1 = FunctionSpace(mesh, "DG", 1)
 V2 = VectorFunctionSpace(mesh, "CG", 1)  # IMPORTANT velocity space needs to be continuous
@@ -32,8 +27,8 @@ V3 = FunctionSpace(mesh, "DG", 1)  # T
 V = V1*V2*V3
 
 # time parameters
-T0 = 100.0
-timeres = 10000
+T0 = 50.0
+timeres = 5000
 t = Constant(0.0)
 dt = Constant(T0/timeres)
 skip=50
@@ -58,7 +53,7 @@ amp = 0.01  # harder to get successful convergence if this is increased ...
 width = 0.1
 nuT.sub(0).interpolate((0.010+amp*(1/sqrt(2*math.pi*width**2))*exp(-x[0]**2/(2*width**2))))
 nuT.sub(1).interpolate(as_vector([0.0+1.0*x[0]]))
-nuT.sub(2).interpolate((1.0+0.0*amp*(1/sqrt(2*math.pi*width**2))*exp(-x[0]**2/(2*width**2))))
+nuT.sub(2).interpolate((1.00+0.0*amp*(1/sqrt(2*math.pi*width**2))*exp(-x[0]**2/(2*width**2))))
 
 # source function
 nstarFunc = Function(V)
@@ -75,23 +70,36 @@ u_n = 0.5*(dot(u,norm)+abs(dot(u,norm)))
 
 # integrated press grad term by parts (or its not stable) + seem to get away without a surface term from doing that (due to mixed DG/CG?) ...
 
-heat_suppress = 1.0  # artificially slow down heat transport NOT USED
+heat_suppress = 1.0  # artificially slow down heat transport i.e. slow down tdot timescale, try e.g. 0.1
 
 # no parallel current, v_e = v_i
 # this relaxes back to reasonable-looking equilibrium
 
 F = -Dt(n)*v1*dx + (n*dot(u, grad(v1))+nstar*v1)*dx \
    - (v1('+') - v1('-'))*(u_n('+')*n('+') - u_n('-')*n('-'))*dS \
+    -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*grad(T*v2[0])[0]*n*dx \
    - conditional(dot(u, norm) > 0, v1*dot(u, norm)*n, 0.0)*ds \
-    -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*n*grad(T*v2[0])[0]*dx \
     -dot(Dt(T), v3) *dx + heat_suppress*(nstar*v3)*dx \
     +(2.0/3.0)*heat_suppress*(T*dot(u, grad(v3)))*dx \
     -(1.0/3.0)*heat_suppress*(dot(u,grad(T))*v3)*dx \
    - (2.0/3.0)*heat_suppress*(v3('+') - v3('-'))*(u_n('+')*T('+') - u_n('-')*T('-'))*dS \
    - (2.0/3.0)*heat_suppress*conditional(dot(u, norm) > 0, v3*dot(u, norm)*T, 0.0)*ds \
    - conditional(dot(u, norm) > 0, v2[0]*dot(u, norm)*u[0]*n, 0.0)*ds \
+#   - conditional(dot(u, norm) > 0, v2[0]*T*n, 0.0)*ds \
 
-# last bdy term is needed to avoid boundary artifacts!
+# penultimate bdy term is needed to avoid boundary artifacts
+# final bdy term is experimental and is WRONG
+
+
+#F = -Dt(n)*v1*dx + (n*dot(u, grad(v1))+nstar*v1)*dx \
+#   - (v1('+') - v1('-'))*(u_n('+')*n('+') - u_n('-')*n('-'))*dS \
+#    -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*T*grad(v2[0])[0]*n*dx - tau*nu_param*n*n*u[0]*v2[0]*dx \
+#   - conditional(dot(u, norm) > 0, v1*dot(u, norm)*n, 0.0)*ds \
+#    -n*dot(Dt(T), v3) *dx + heat_suppress*(2.0/3.0)*0.71*T*(n*dot(u, grad(v3))+n*nstar*v3)*dx \
+#    - heat_suppress*(2.0/3.0)*T*v3*grad(u[0])[0]*n*dx - heat_suppress*n*u[0]*grad(T)[0]*v3*dx\
+#   - heat_suppress*0.71*(2.0/3.0)*(v3('+') - v3('-'))*(u_n('+')*n('+')*T('+') - u_n('-')*n('-')*T('-'))*dS \
+#   - conditional(dot(u, norm) > 0, heat_suppress*0.71*(2.0/3.0)*T*v3*dot(u, norm)*n, 0.0)*ds \
+
 
 # params taken from Cahn-Hilliard example cited above
 params = {'snes_monitor': None, 'snes_max_it': 100,
@@ -105,7 +113,7 @@ params = {'snes_monitor': None, 'snes_max_it': 100,
 bc_test1 = DirichletBC(V.sub(1),as_vector([-1.0]),1)
 bc_test2 = DirichletBC(V.sub(1),as_vector([1.0]),2)
 
-# removed velocity BC.  Seems to work and outflow speed seems sonic (c_s = sqrt(T))
+# removed velocity BC.  Seems to work but not clear whether outflow is sonic.
 stepper = TimeStepper(F, butcher_tableau, t, dt, nuT, solver_parameters=params)
 #stepper = TimeStepper(F, butcher_tableau, t, dt, nuT, solver_parameters=params, bcs=[bc_test1, bc_test2])
 
