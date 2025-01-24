@@ -74,6 +74,7 @@ F = -Dt(n)*v1*dx + (n*dot(u, grad(v1))+nstar*v1)*dx \
    - (v1('+') - v1('-'))*(u_n('+')*n('+') - u_n('-')*n('-'))*dS \
     -n*dot(Dt(u), v2) *dx - n*u[0]*v2[0]*grad(u[0])[0]*dx + tau*Temp*grad(v2[0])[0]*n*dx \
    - conditional(dot(u, norm) > 0, v1*dot(u, norm)*n, 0.0)*ds \
+   - conditional(dot(u, norm) > 0, v2[0]*dot(u, norm)*u[0]*n, 0.0)*ds \
 
 # params taken from Cahn-Hilliard example cited above
 params = {'snes_monitor': None, 'snes_max_it': 100,
